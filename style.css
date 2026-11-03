@@ -11,3 +11,11 @@
 .watermark-preview{height:210px;background:white;border:1px solid #dce6f0;border-radius:10px;position:relative;overflow:hidden;display:grid;place-items:center}
 .watermark-preview img{position:absolute;left:50%;transform:translate(-50%,-50%);max-height:92%;object-fit:contain;pointer-events:none}
 .watermark-preview span{position:relative;color:#24415f;font-size:15px;font-weight:800;background:#ffffff88;padding:7px 12px;border-radius:8px}
+
+/* v7: 공통 안내문 설정 */
+.standard-notice-settings{margin-top:14px;padding:18px;border:1px solid #d6e4f2;border-radius:14px;background:#f4f8fc}
+.standard-notice-settings h3{margin:0 0 8px;color:#174c7d;font-size:17px}
+.standard-notice-settings label{display:block;margin-top:12px}
+.standard-notice-settings textarea{width:100%;min-height:140px;line-height:1.65;box-sizing:border-box}
+.standard-notice-settings .standard-check{display:flex;align-items:center;gap:9px;font-weight:650}
+.standard-notice-settings .standard-check input{width:auto;flex:none}
