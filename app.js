@@ -1,15 +1,15 @@
 'use strict';
 const $=id=>document.getElementById(id);const money=n=>Math.round(Number(n)||0).toLocaleString('ko-KR')+'원';const KEY='cleanquote_offline_records_v1',SET='cleanquote_offline_settings_v1',TPL='cleanquote_offline_templates_v1';
 const defaults={'사무실':'사무실 바닥 먼지 및 오염 제거\n책상 및 공용 가구 표면 청소\n출입문 유리 및 손잡이 세척\n탕비실 및 화장실 위생 관리\n쓰레기 수거 및 분리배출','병원·치과':'대기실 및 복도 바닥 청소\n접수대 및 비의료 접촉 표면 청소\n화장실 세척 및 소모품 정리\n출입문 유리 및 손잡이 청소\n의료폐기물 및 의료기기 관리는 별도 협의','학원':'강의실 및 복도 바닥 청소\n책상과 의자 표면 먼지 제거\n출입문 및 창틀 청소\n화장실 위생 관리\n쓰레기 수거 및 분리배출','식당·카페':'홀 바닥 및 테이블 청소\n출입문 유리 및 손잡이 청소\n고객 화장실 청소\n쓰레기 분리배출\n주방 후드 및 전문 세척은 별도 협의','상가·건물':'공용 로비 및 복도 청소\n계단 및 난간 먼지 제거\n엘리베이터 내부 청소\n공용 화장실 청소\n출입구 유리 청소','헬스장':'운동공간 바닥 청소\n운동기구 외부 표면 청소\n탈의실 및 샤워실 청소\n거울 및 유리 세척\n쓰레기 수거','교회·종교시설':'예배실 및 복도 바닥 청소\n의자 및 가구 먼지 제거\n출입구 및 공용공간 청소\n화장실 청소\n쓰레기 수거','주거·특수청소':'현장 오염 상태 확인 및 구역별 작업\n바닥 및 벽면 오염 제거\n폐기물 분리 및 수거 범위 협의\n필요 시 전문 장비 및 약품 적용\n특수 폐기물 처리는 별도 협의'};
-const fields=['client','phone','address','date','recipient','service','frequency','industry','scope','price','priceUnit','notes'];let currentId=null;let templates=load(TPL,defaults);let records=load(KEY,[]);let settings=load(SET,{company:'청춘클린랩',companyPhone:'',companyEmail:'',companyAddress:'',managerName:'',managerRole:'',website:'',businessCard:'',companyLogo:'',includeBusinessCard:true,watermarkEnabled:true,watermarkOpacity:6,watermarkSize:'large',watermarkPosition:'center',showBusinessCard:true,showWebsiteButton:true,websiteButtonLabel:'홈페이지 바로가기',websiteButtonColor:'#153B62',includeStandardNotice:true,standardNotice:''});let deferredInstall=null;
+const fields=['client','phone','address','date','recipient','service','frequency','industry','scope','price','priceUnit','notes'];let currentId=null;let templates=load(TPL,defaults);let records=load(KEY,[]);let settings=load(SET,{company:'청춘클린랩',companyPhone:'',companyEmail:'',companyAddress:'',managerName:'',managerRole:'',website:'',businessCard:'',companyLogo:'',includeBusinessCard:true,watermarkEnabled:true,watermarkOpacity:12,watermarkSize:'large',watermarkPosition:'center',showBusinessCard:true,showWebsiteButton:true,websiteButtonLabel:'홈페이지 바로가기',websiteButtonColor:'#153B62',includeStandardNotice:true,standardNotice:''});let deferredInstall=null;
 function load(k,f){try{const v=JSON.parse(localStorage.getItem(k));return v??structuredClone(f)}catch{return structuredClone(f)}}function persist(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{toast('저장 공간이 부족하거나 저장이 차단되었습니다.');return false}}function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.style.display='none',3600)}
 function getData(){const d={};for(const k of fields)d[k]=$(k).value;return d}function setData(d){for(const k of fields)if(d[k]!==undefined)$(k).value=d[k];calculate()}function calculate(){let p=Math.max(0,Math.round(Number($('price').value)||0)),v=Math.round(p*.1);$('subtotal').textContent=money(p);$('vat').textContent=money(v);$('total').textContent=money(p+v)}function updateIndustry(){const selected=$('industry').value;$('scope').value=templates[selected]||''}function initIndustry(){const sel=$('industry');sel.replaceChildren();for(const name of Object.keys(defaults)){const o=document.createElement('option');o.textContent=name;o.value=name;sel.append(o)}updateIndustry()}
 function save(){const d=getData();if(!d.client.trim()){toast('고객명을 입력하세요.');$('client').focus();return}const id=currentId||('q'+Date.now());const record={id,updatedAt:new Date().toISOString(),data:d};records=records.filter(x=>x.id!==id);records.unshift(record);if(persist(KEY,records)){currentId=id;renderHistory();toast('견적서를 저장했습니다.')}}function renderHistory(){const el=$('historyList');el.replaceChildren();if(!records.length){el.innerHTML='<div class="card">저장된 견적서가 없습니다.</div>';return}for(const r of records){const wrap=document.createElement('div');wrap.className='history-item';const name=document.createElement('strong');name.textContent=r.data.client||'이름 없음';const meta=document.createElement('small');meta.textContent=[r.data.date,r.data.service,money((Number(r.data.price)||0)*1.1)].join(' · ');const row=document.createElement('div');row.className='row';const loadBtn=document.createElement('button');loadBtn.textContent='불러오기';loadBtn.onclick=()=>{currentId=r.id;setData(r.data);switchTab('editor');toast('견적서를 불러왔습니다.')};const del=document.createElement('button');del.className='danger';del.textContent='삭제';del.onclick=()=>{if(confirm('이 견적서를 삭제할까요?')){records=records.filter(x=>x.id!==r.id);persist(KEY,records);if(currentId===r.id)currentId=null;renderHistory()}};row.append(loadBtn,del);wrap.append(name,meta,row);el.append(wrap)}}function switchTab(name){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id===name));scrollTo({top:0,behavior:'smooth'})}
 function wrapText(ctx,text,maxWidth){const result=[];for(const paragraph of String(text||'').split(/\r?\n/)){if(!paragraph){result.push('');continue}let line='';for(const ch of paragraph){if(ctx.measureText(line+ch).width>maxWidth&&line){result.push(line);line=ch}else line+=ch}result.push(line)}return result}
 function drawWatermark(ctx,W,H,img){
  if(settings.watermarkEnabled===false||!img)return;
- const opacity=Math.min(.2,Math.max(.02,(Number(settings.watermarkOpacity)||6)/100));
- const scale={small:.38,medium:.52,large:.67}[settings.watermarkSize]||.67;
+ const opacity=Math.min(.2,Math.max(.02,(Number(settings.watermarkOpacity)||12)/100));
+ const scale={small:.45,medium:.65,large:.85}[settings.watermarkSize]||.85;
  const w=W*scale,h=w*img.height/img.width;
  const y=settings.watermarkPosition==='top'?H*.19:settings.watermarkPosition==='bottom'?H*.75:H*.5;
  ctx.save();ctx.globalAlpha=opacity;ctx.drawImage(img,(W-w)/2,y-h/2,w,h);ctx.restore();
@@ -25,12 +25,12 @@ function buildPages(d,cardImage,logoImage,watermarkImage){const W=1240,H=1754,M=
   const height=Math.max(69,30+lines.length*rowLine);
   if(y+height+gap>H-145)newPage();
   const top=y-25;
-  ctx.fillStyle=i%2===0?'#f1f6fc':'#f8fafc';
+  ctx.fillStyle='#ffffff';
   ctx.beginPath();if(ctx.roundRect)ctx.roundRect(M,top,usable,height,12);else ctx.rect(M,top,usable,height);ctx.fill();
-  ctx.fillStyle='#1970b8';ctx.fillRect(M,top,5,height);
-  ctx.fillStyle='#dceaf8';ctx.beginPath();ctx.arc(M+48,top+height/2,23,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#16578e';ctx.font='bold 22px sans-serif';ctx.textAlign='center';ctx.fillText(String(i+1).padStart(2,'0'),M+48,top+height/2+8);ctx.textAlign='left';
-  ctx.fillStyle='#233e59';ctx.font=`${fontSize}px sans-serif`;
+  ctx.strokeStyle='#d8dee5';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(M+12,top+height-1);ctx.lineTo(M+usable-12,top+height-1);ctx.stroke();
+  // White background: no colored badge behind scope number.
+  ctx.fillStyle='#526173';ctx.font='bold 22px sans-serif';ctx.textAlign='center';ctx.fillText(String(i+1).padStart(2,'0'),M+48,top+height/2+8);ctx.textAlign='left';
+  ctx.fillStyle='#253344';ctx.font=`${fontSize}px sans-serif`;
   const startY=top+(height-lines.length*rowLine)/2+28;
   lines.forEach((line,j)=>ctx.fillText(line,M+93,startY+j*rowLine));
   y+=height+gap;
@@ -111,7 +111,7 @@ async function pdfFromCanvases(canvases){
 async function pdfFile(){
   const d=getData();if(!d.client.trim()){toast('PDF 생성 전 고객명을 입력하세요.');$('client').focus();return null}
   const cardImage=(settings.includeBusinessCard!==false&&settings.businessCard)?await loadCardImage(settings.businessCard):null;
-  const logoImage=settings.companyLogo?await loadCardImage(settings.companyLogo):null;const watermarkImage=logoImage||await loadCardImage('./assets/cheongchun-logo.jpg');const pdf=await pdfFromCanvases(buildPages(d,cardImage,logoImage,watermarkImage));
+  const logoImage=settings.companyLogo?await loadCardImage(settings.companyLogo):null;const watermarkImage=await loadCardImage('./assets/cheongchun-watermark.png');const pdf=await pdfFromCanvases(buildPages(d,cardImage,logoImage,watermarkImage));
   const safe=(d.client||'고객').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').slice(0,32);
   const companySafe=(settings.company||'청춘클린랩').replace(/[\\/:*?"<>|]/g,'_');const name=companySafe+'_견적서_'+safe+'_'+(d.date||'날짜미정')+'.pdf';
   return new File([pdf],name,{type:'application/pdf'});
@@ -143,7 +143,7 @@ $('businessCardInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)retu
 $('removeBusinessCard').onclick=()=>{settings.businessCard='';persist(SET,settings);refreshCardPreview();toast('명함 이미지를 삭제했습니다.')};
 function loadDesignControls(){
  $('watermarkEnabled').checked=settings.watermarkEnabled!==false;
- $('watermarkOpacity').value=settings.watermarkOpacity??6;
+ $('watermarkOpacity').value=settings.watermarkOpacity??12;
  $('watermarkSize').value=settings.watermarkSize||'large';
  $('watermarkPosition').value=settings.watermarkPosition||'center';
  $('showBusinessCard').checked=settings.showBusinessCard!==false;
