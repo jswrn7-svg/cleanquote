@@ -14,7 +14,30 @@ function drawWatermark(ctx,W,H,img){
  const y=settings.watermarkPosition==='top'?H*.19:settings.watermarkPosition==='bottom'?H*.75:H*.5;
  ctx.save();ctx.globalAlpha=opacity;ctx.drawImage(img,(W-w)/2,y-h/2,w,h);ctx.restore();
 }
-function buildPages(d,cardImage,logoImage,watermarkImage){const W=1240,H=1754,M=100,usable=W-2*M;const company=settings.company||'청춘클린랩';const canvases=[];let c,ctx,y,page=0;function newPage(){c=document.createElement('canvas');c.width=W;c.height=H;ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);drawWatermark(ctx,W,H,watermarkImage);canvases.push(c);page++;y=104;ctx.fillStyle='#124d88';ctx.fillRect(M,72,8,65);let nameX=M+26;if(logoImage){const lw=110,lh=74,scale=Math.min(lw/logoImage.width,lh/logoImage.height);const iw=logoImage.width*scale,ih=logoImage.height*scale;ctx.drawImage(logoImage,nameX,78+(lh-ih)/2,iw,ih);nameX+=125}ctx.font='bold 46px sans-serif';ctx.fillText(company,nameX,120,Math.max(160,W-M-nameX));ctx.fillStyle='#75869b';ctx.font='24px sans-serif';ctx.fillText('CLEANING SERVICE QUOTATION',M+27,157);ctx.fillStyle='#14375b';ctx.font='bold 53px sans-serif';ctx.fillText('청소 서비스 견적서',M,253);ctx.strokeStyle='#d8e3f0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(M,282);ctx.lineTo(W-M,282);ctx.stroke();y=324}function section(title){if(y>H-240)newPage();ctx.fillStyle='#155c9f';ctx.font='bold 30px sans-serif';ctx.fillText(title,M,y);y+=28;ctx.strokeStyle='#d7e3f1';ctx.beginPath();ctx.moveTo(M,y+10);ctx.lineTo(W-M,y+10);ctx.stroke();y+=52}function line(label,value){ctx.font='25px sans-serif';const lines=wrapText(ctx,value,usable-240);if(y+Math.max(1,lines.length)*41>H-140)newPage();ctx.fillStyle='#6d8095';ctx.fillText(label,M,y);ctx.fillStyle='#203b58';ctx.font='25px sans-serif';lines.forEach((t,i)=>ctx.fillText(t,M+225,y+i*39));y+=Math.max(1,lines.length)*41+13}function paragraph(value){ctx.font='25px sans-serif';for(const l of wrapText(ctx,value,usable)){if(y>H-145)newPage();ctx.fillStyle='#243d58';ctx.fillText(l,M+8,y);y+=42}}function drawWebsiteButton(url){
+function buildPages(d,cardImage,logoImage,watermarkImage){const W=1240,H=1754,M=100,usable=W-2*M;const company=settings.company||'청춘클린랩';const canvases=[];let c,ctx,y,page=0;function newPage(){c=document.createElement('canvas');c.width=W;c.height=H;ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);drawWatermark(ctx,W,H,watermarkImage);canvases.push(c);page++;y=104;ctx.fillStyle='#124d88';ctx.fillRect(M,72,8,65);let nameX=M+26;if(logoImage){const lw=110,lh=74,scale=Math.min(lw/logoImage.width,lh/logoImage.height);const iw=logoImage.width*scale,ih=logoImage.height*scale;ctx.drawImage(logoImage,nameX,78+(lh-ih)/2,iw,ih);nameX+=125}ctx.font='bold 46px sans-serif';ctx.fillText(company,nameX,120,Math.max(160,W-M-nameX));ctx.fillStyle='#75869b';ctx.font='24px sans-serif';ctx.fillText('CLEANING SERVICE QUOTATION',M+27,157);ctx.fillStyle='#14375b';ctx.font='bold 53px sans-serif';ctx.fillText('청소 서비스 견적서',M,253);ctx.strokeStyle='#d8e3f0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(M,282);ctx.lineTo(W-M,282);ctx.stroke();y=324}function section(title){if(y>H-240)newPage();ctx.fillStyle='#155c9f';ctx.font='bold 30px sans-serif';ctx.fillText(title,M,y);y+=28;ctx.strokeStyle='#d7e3f1';ctx.beginPath();ctx.moveTo(M,y+10);ctx.lineTo(W-M,y+10);ctx.stroke();y+=52}function line(label,value){ctx.font='25px sans-serif';const lines=wrapText(ctx,value,usable-240);if(y+Math.max(1,lines.length)*41>H-140)newPage();ctx.fillStyle='#6d8095';ctx.fillText(label,M,y);ctx.fillStyle='#203b58';ctx.font='25px sans-serif';lines.forEach((t,i)=>ctx.fillText(t,M+225,y+i*39));y+=Math.max(1,lines.length)*41+13}function paragraph(value){ctx.font='25px sans-serif';for(const l of wrapText(ctx,value,usable)){if(y>H-145)newPage();ctx.fillStyle='#243d58';ctx.fillText(l,M+8,y);y+=42}}function scopeList(value){
+ const items=String(value||'').split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
+ if(!items.length){paragraph('별도 협의');return;}
+ const gap=13,pad=20,fontSize=25,rowLine=38;
+ ctx.font=`${fontSize}px sans-serif`;
+ for(let i=0;i<items.length;i++){
+  // The content wraps within each item, while the label and card remain together.
+  const lines=wrapText(ctx,items[i],usable-135);
+  const height=Math.max(69,30+lines.length*rowLine);
+  if(y+height+gap>H-145)newPage();
+  const top=y-25;
+  ctx.fillStyle=i%2===0?'#f1f6fc':'#f8fafc';
+  ctx.beginPath();if(ctx.roundRect)ctx.roundRect(M,top,usable,height,12);else ctx.rect(M,top,usable,height);ctx.fill();
+  ctx.fillStyle='#1970b8';ctx.fillRect(M,top,5,height);
+  ctx.fillStyle='#dceaf8';ctx.beginPath();ctx.arc(M+48,top+height/2,23,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#16578e';ctx.font='bold 22px sans-serif';ctx.textAlign='center';ctx.fillText(String(i+1).padStart(2,'0'),M+48,top+height/2+8);ctx.textAlign='left';
+  ctx.fillStyle='#233e59';ctx.font=`${fontSize}px sans-serif`;
+  const startY=top+(height-lines.length*rowLine)/2+28;
+  lines.forEach((line,j)=>ctx.fillText(line,M+93,startY+j*rowLine));
+  y+=height+gap;
+ }
+ y+=12;
+}
+function drawWebsiteButton(url){
  if(settings.showWebsiteButton===false||!url)return;
  if(y+135>H-145)newPage();
  const bx=M,by=y-8,bw=usable,bh=104;
@@ -28,7 +51,7 @@ function buildPages(d,cardImage,logoImage,watermarkImage){const W=1240,H=1754,M=
  const target=canvases[canvases.length-1];target.pdfLinks=target.pdfLinks||[];
  target.pdfLinks.push({url,x:bx,y:by,w:bw,h:bh});y+=bh+30;
 }
-newPage();section('01  고객 및 현장 정보');line('고객명',d.client);line('연락처',d.phone);line('현장 주소',d.address);line('견적일',d.date);section('02  작업 내용');line('서비스',d.service);line('작업 주기',d.frequency);line('업종',d.industry);section('03  청소 작업 범위');paragraph(d.scope);if(y>H-340)newPage();section('04  견적 금액');const price=Math.max(0,Math.round(Number(d.price)||0)),vat=Math.round(price*.1);line('견적 기준',d.priceUnit);line('공급가액',money(price));line('부가세 (10%)',money(vat));ctx.fillStyle='#e8f3ff';ctx.fillRect(M,y-30,usable,80);ctx.fillStyle='#11579a';ctx.font='bold 34px sans-serif';ctx.fillText('총 견적 금액',M+22,y+22);ctx.textAlign='right';ctx.fillText(money(price+vat),W-M-22,y+22);ctx.textAlign='left';y+=115;if(d.notes.trim()){section('05  추가 안내');paragraph(d.notes)}if(y>H-250)newPage();y+=30;section('발신 회사 정보');line('회사명',company);if(settings.companyPhone)line('연락처',settings.companyPhone);if(settings.companyEmail)line('이메일',settings.companyEmail);if(settings.companyAddress)line('주소',settings.companyAddress);
+newPage();section('01  고객 및 현장 정보');line('고객명',d.client);line('연락처',d.phone);line('현장 주소',d.address);line('견적일',d.date);section('02  작업 내용');line('서비스',d.service);line('작업 주기',d.frequency);line('업종',d.industry);section('03  청소 작업 범위');scopeList(d.scope);if(y>H-340)newPage();section('04  견적 금액');const price=Math.max(0,Math.round(Number(d.price)||0)),vat=Math.round(price*.1);line('견적 기준',d.priceUnit);line('공급가액',money(price));line('부가세 (10%)',money(vat));ctx.fillStyle='#e8f3ff';ctx.fillRect(M,y-30,usable,80);ctx.fillStyle='#11579a';ctx.font='bold 34px sans-serif';ctx.fillText('총 견적 금액',M+22,y+22);ctx.textAlign='right';ctx.fillText(money(price+vat),W-M-22,y+22);ctx.textAlign='left';y+=115;if(d.notes.trim()){section('05  추가 안내');paragraph(d.notes)}if(y>H-250)newPage();y+=30;section('발신 회사 정보');line('회사명',company);if(settings.companyPhone)line('연락처',settings.companyPhone);if(settings.companyEmail)line('이메일',settings.companyEmail);if(settings.companyAddress)line('주소',settings.companyAddress);
 if(settings.includeBusinessCard!==false&&(settings.managerName||settings.managerRole||cardImage)){
   const cardHeight=cardImage&&settings.showBusinessCard!==false?270:0;
   if(y+190+cardHeight>H-140)newPage();
