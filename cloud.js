@@ -61,6 +61,30 @@ byId('logoutCloud').onclick = async () => {
   const {error} = await client.auth.signOut(); if(error) return fail(error);
   location.reload();
 };
+let withdrawalBusy=false;
+byId('openWithdrawal').onclick = () => {
+  byId('withdrawPassword').value='';byId('withdrawConfirmation').value='';
+  byId('withdrawMessage').textContent='';byId('withdrawDialog').showModal();
+};
+byId('cancelWithdrawal').onclick = () => {if(!withdrawalBusy)byId('withdrawDialog').close();};
+byId('withdrawDialog').addEventListener('cancel',e=>{if(withdrawalBusy)e.preventDefault();});
+byId('withdrawForm').onsubmit = async e => {
+  e.preventDefault();if(withdrawalBusy)return;
+  if(byId('withdrawConfirmation').value.trim()!=='회원탈퇴') {byId('withdrawMessage').textContent='회원탈퇴 문구를 정확히 입력해 주세요.';return;}
+  withdrawalBusy=true;e.submitter.disabled=true;byId('cancelWithdrawal').disabled=true;
+  byId('withdrawMessage').textContent='비밀번호를 확인하고 있습니다…';
+  try {
+    const authResult=await client.auth.signInWithPassword({email:account.email,password:byId('withdrawPassword').value});
+    byId('withdrawPassword').value='';if(authResult.error)throw Error('비밀번호를 확인해 주세요.');
+    byId('withdrawMessage').textContent='계정과 저장 데이터를 삭제하고 있습니다…';
+    const {error}=await client.rpc('cq_withdraw',{confirmation:'회원탈퇴'});if(error)throw error;
+    generation=saved;formChanged=false;payload={};
+    await client.auth.signOut({scope:'local'}).catch(()=>{});
+    localStorage.removeItem('cleanquote-auth-v1');
+    location.replace(location.origin+location.pathname+'?withdrawn=1');
+  } catch(error) {byId('withdrawMessage').textContent=error.message||'탈퇴에 실패했습니다. 다시 시도해 주세요.';}
+  finally {withdrawalBusy=false;e.submitter.disabled=false;byId('cancelWithdrawal').disabled=false;}
+};
 byId('loginForm').onsubmit = async e => {
   e.preventDefault(); const submit=e.submitter; submit.disabled=true;
   try {
@@ -141,7 +165,7 @@ async function renderAdmin() {
 byId('refreshAdmin').onclick = () => renderAdmin().catch(fail);
 byId('loadAudit').onclick = async () => {
   const {data,error}=await client.rpc('cq_admin_audit'); if(error) return fail(error);
-  byId('adminAudit').textContent=data.map(r=>`${new Date(r.created_at).toLocaleString('ko-KR')} · ${r.action} · 관리자 ${r.actor} · 대상 ${r.target}`).join('\n') || '기록이 없습니다.';
+  byId('adminAudit').textContent=data.map(r=>`${new Date(r.created_at).toLocaleString('ko-KR')} · ${r.action} · 관리자 ${r.actor||'탈퇴한 계정'} · 대상 ${r.target||'탈퇴한 계정'}`).join('\n') || '기록이 없습니다.';
 };
 async function start() {
   if(!config.url || !config.publicKey) {
@@ -153,15 +177,16 @@ async function start() {
   const recovery=location.hash.includes('type=recovery');
   client.auth.onAuthStateChange((event,session)=>{
     if(event==='PASSWORD_RECOVERY') { byId('newPasswordForm').hidden=false; }
-    if(event==='SIGNED_OUT' && account) { generation=saved;formChanged=false;location.reload(); }
+    if(event==='SIGNED_OUT' && account && !withdrawalBusy) { generation=saved;formChanged=false;location.reload(); }
     if(account && session && session.user.id!==account.id) { failed=true;generation=saved;formChanged=false;location.reload(); }
   });
   if(recovery) {byId('newPasswordForm').hidden=false;return;}
   const {data:{user},error}=await client.auth.getUser();
-  if(error || !user) {message('로그인하거나 가입 승인을 요청하세요.'); return;}
+  if(error || !user) {message(new URLSearchParams(location.search).has('withdrawn')?'회원 탈퇴가 완료되었습니다. 계정과 서버에 저장된 설정·견적서를 삭제했습니다.':'로그인하거나 가입 승인을 요청하세요.'); return;}
   const profile=await client.from('cq_accounts').select('*').eq('id',user.id).single();
   if(profile.error) throw profile.error; account=profile.data;
   byId('accountBar').hidden=false; byId('accountName').textContent=account.company+' · '+account.email;
+  byId('openWithdrawal').hidden=account.is_admin;
   if(account.notice_version!==noticeVersion) {
     byId('loginForm').hidden=true;byId('signupSection').hidden=true;byId('noticeUpdateForm').hidden=false;
     message('이용 안내가 변경되었습니다. 확인 후 동의하면 계속 이용할 수 있습니다.');return;
