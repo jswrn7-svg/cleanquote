@@ -42,3 +42,6 @@
 
 .withdraw-dialog{width:min(600px,calc(100vw - 32px));max-height:90vh;overflow:auto;border:1px solid #dce5f0;border-radius:18px;padding:24px;color:#172a44}.withdraw-dialog::backdrop{background:#102b4c88}.withdraw-dialog h2{margin:0}.withdraw-dialog p{line-height:1.7;font-size:14px}.withdraw-actions{display:flex;gap:12px;flex-wrap:wrap}.withdraw-actions button{flex:1;min-width:150px}.withdraw-danger{background:#ac3434;color:#fff}#openWithdrawal{background:#fff1ef;color:#923131}
 
+
+#loginFeedback{margin:0;padding:0;font-size:14px;line-height:1.7;overflow-wrap:anywhere}#loginFeedback:not(:empty){padding:12px 14px;border-radius:10px;background:#eef5ff;color:#173a5f}#loginFeedback[data-kind=error]{background:#fff0ed;color:#8d2424;border:1px solid #edc0b9}#loginFeedback[data-kind=success]{background:#edf8f0;color:#215b36}#loginSubmit:disabled{opacity:.7;cursor:wait}
+

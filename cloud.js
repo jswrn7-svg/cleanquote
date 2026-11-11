@@ -85,12 +85,32 @@ byId('withdrawForm').onsubmit = async e => {
   } catch(error) {byId('withdrawMessage').textContent=error.message||'탈퇴에 실패했습니다. 다시 시도해 주세요.';}
   finally {withdrawalBusy=false;e.submitter.disabled=false;byId('cancelWithdrawal').disabled=false;}
 };
+let loginBusy=false;
+function loginFeedback(text,kind='info') {
+ const el=byId('loginFeedback');el.textContent=text;el.dataset.kind=kind;
+ if(text)el.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function loginErrorMessage(error) {
+ const code=String(error.code||''),msg=String(error.message||'');
+ if(code==='invalid_credentials'||/invalid login credentials/i.test(msg))return '이메일 또는 비밀번호가 일치하지 않습니다. 견적서 사이트 가입 시 정한 비밀번호를 입력하거나 비밀번호를 재설정해 주세요.';
+ if(code==='email_not_confirmed'||/email not confirmed/i.test(msg))return '이메일 인증이 필요합니다. 가입 인증 메일을 확인한 뒤 다시 로그인해 주세요.';
+ if(/rate|too many/i.test(code+' '+msg))return '로그인 시도가 많습니다. 잠시 기다린 뒤 다시 시도해 주세요.';
+ if(/fetch|network|load failed/i.test(msg))return '로그인 서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.';
+ return '로그인하지 못했습니다. 입력 내용을 확인하고 다시 시도하거나 비밀번호를 재설정해 주세요.';
+}
+byId('loginForm').addEventListener('invalid',e=>{
+ loginFeedback(e.target.id==='loginEmail'?'이메일 주소를 정확히 입력해 주세요.':'비밀번호를 입력해 주세요.','error');
+},true);
 byId('loginForm').onsubmit = async e => {
-  e.preventDefault(); const submit=e.submitter; submit.disabled=true;
+  e.preventDefault();if(loginBusy)return;
+  const submit=e.submitter;submit.disabled=true;submit.textContent='로그인 중…';loginBusy=true;
+  loginFeedback('이메일과 비밀번호를 확인하고 있습니다.');
   try {
-    const {error} = await client.auth.signInWithPassword({email:byId('loginEmail').value.trim(),password:byId('loginPassword').value});
-    if(error) throw error; location.reload();
-  } catch(error) { fail(error); } finally { submit.disabled=false; }
+    if(!client)throw Error('network not ready');
+    const {error} = await client.auth.signInWithPassword({email:byId('loginEmail').value.trim().toLowerCase(),password:byId('loginPassword').value});
+    if(error)throw error;loginFeedback('로그인되었습니다. 계정 화면을 불러오고 있습니다.','success');location.reload();
+  } catch(error) {loginFeedback(loginErrorMessage(error),'error');}
+  finally {submit.disabled=false;submit.textContent='로그인';loginBusy=false;}
 };
 byId('signupForm').onsubmit = async e => {
   e.preventDefault(); if(!byId('signupConsent').checked) return;
@@ -109,9 +129,11 @@ byId('noticeUpdateForm').onsubmit = async e => {
  catch(error){fail(error);}finally{submit.disabled=false;}
 };
 byId('resetPassword').onclick = async () => {
-  const email=byId('loginEmail').value.trim(); if(!email) return message('로그인 이메일을 먼저 입력하세요.');
-  const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
-  if(error) return fail(error); message('등록된 이메일이면 비밀번호 재설정 안내가 발송됩니다.');
+  const email=byId('loginEmail').value.trim();if(!email||!byId('loginEmail').checkValidity())return loginFeedback('로그인 이메일을 정확히 입력한 뒤 비밀번호 재설정을 눌러주세요.','error');
+  const b=byId('resetPassword');b.disabled=true;loginFeedback('비밀번호 재설정 안내를 요청하고 있습니다.');
+  try{const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;
+   loginFeedback('등록된 이메일이면 비밀번호 재설정 안내가 발송됩니다. 받은편지함과 스팸함을 확인해 주세요.','success');
+  }catch(error){loginFeedback(loginErrorMessage(error),'error');}finally{b.disabled=false;}
 };
 byId('newPasswordForm').onsubmit = async e => {
   e.preventDefault(); const {error}=await client.auth.updateUser({password:byId('newPassword').value});
@@ -174,6 +196,7 @@ async function start() {
   }
   const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/+esm');
   client=createClient(config.url,config.publicKey,{auth:{storageKey:'cleanquote-auth-v1'}});
+  byId('loginSubmit').disabled=false;byId('loginSubmit').textContent='로그인';byId('resetPassword').disabled=false;loginFeedback('');
   const recovery=location.hash.includes('type=recovery');
   client.auth.onAuthStateChange((event,session)=>{
     if(event==='PASSWORD_RECOVERY') { byId('newPasswordForm').hidden=false; }
@@ -207,4 +230,4 @@ async function start() {
     if(Number(check.data.revision)!==revision) status('다른 기기에 새 변경이 있습니다. 최신 데이터 불러오기를 눌러주세요.');
   },30000);
 }
-start().catch(fail);
+start().catch(error=>{fail(error);loginFeedback('로그인 서버를 불러오지 못했습니다. 인터넷 연결을 확인하고 페이지를 새로고침해 주세요.','error');});
