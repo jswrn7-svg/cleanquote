@@ -232,7 +232,7 @@ async function start() {
   if(account.status!=='approved') {message(account.status==='pending'?'가입 승인 대기 중입니다. 관리자 승인 후 다시 로그인하세요.':'이용이 정지된 계정입니다. 운영자에게 문의하세요.');return;}
   const result=await client.from('cq_documents').select('payload,revision').eq('owner_id',user.id).single();
   if(result.error) throw result.error; payload=result.data.payload;revision=Number(result.data.revision);
-  const script=document.createElement('script');script.src='app.js?v=16-catalog';
+  const script=document.createElement('script');script.src='app.js?v=17-filter';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('견적 기능을 불러오지 못했습니다.'));document.body.append(script);});
   byId('accountGate').hidden=true;document.querySelector('main').hidden=false;
   byId('cloudControls').hidden=false;status('서버 데이터를 불러왔습니다.');
