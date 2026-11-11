@@ -87,14 +87,16 @@ byId('newPasswordForm').onsubmit = async e => {
   e.preventDefault(); const {error}=await client.auth.updateUser({password:byId('newPassword').value});
   if(error) return fail(error); location.replace(location.origin+location.pathname);
 };
-byId('legacyBackup').onclick = () => {
+function exportLegacyBackup() {
   try {
     const read=(key,fallback)=>JSON.parse(localStorage.getItem(key)||'null')??fallback;
     const backup={version:1,records:read('cleanquote_offline_records_v1',[]),settings:read('cleanquote_offline_settings_v1',{}),templates:read('cleanquote_offline_templates_v1',{})};
     const url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
     const a=document.createElement('a');a.href=url;a.download='견적서_업데이트전_데이터백업.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
   } catch(e) {fail(Error('기존 데이터 백업을 읽지 못했습니다. 원래 브라우저에서 다시 확인하세요.'));}
-};
+}
+byId('legacyBackup').onclick = exportLegacyBackup;
+byId('legacyBackupLoggedIn').onclick = exportLegacyBackup;
 async function renderAdmin() {
   const root=byId('adminAccounts'); root.replaceChildren();
   const {data,error}=await client.from('cq_accounts').select('id,email,company,status,is_admin,notice_accepted_at').order('created_at',{ascending:false});
@@ -157,7 +159,7 @@ async function start() {
   if(account.status!=='approved') {message(account.status==='pending'?'가입 승인 대기 중입니다. 관리자 승인 후 다시 로그인하세요.':'이용이 정지된 계정입니다. 운영자에게 문의하세요.');return;}
   const result=await client.from('cq_documents').select('payload,revision').eq('owner_id',user.id).single();
   if(result.error) throw result.error; payload=result.data.payload;revision=Number(result.data.revision);
-  const script=document.createElement('script');script.src='app.js?v=9-cloud';
+  const script=document.createElement('script');script.src='app.js?v=10-sauna';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('견적 기능을 불러오지 못했습니다.'));document.body.append(script);});
   byId('accountGate').hidden=true;document.querySelector('main').hidden=false;
   byId('cloudControls').hidden=false;status('서버 데이터를 불러왔습니다.');
