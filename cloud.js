@@ -1,7 +1,7 @@
 // Authentication is a UI gate; database policies enforce approval and ownership.
 const byId = id => document.getElementById(id);
 const message = text => { byId('accountMessage').textContent = text; };
-const noticeVersion = '2026-11-11-v1';
+const noticeVersion = '2026-11-11-v2';
 const config = window.CLEANQUOTE_CLOUD || {};
 let client, account, revision = 0, payload = {}, generation = 0, saved = 0;
 let running = false, failed = false, formChanged = false;
@@ -69,14 +69,20 @@ byId('loginForm').onsubmit = async e => {
   } catch(error) { fail(error); } finally { submit.disabled=false; }
 };
 byId('signupForm').onsubmit = async e => {
-  e.preventDefault(); if(!byId('adminNoticeConsent').checked) return;
+  e.preventDefault(); if(!byId('signupServiceConsent').checked || !byId('signupAdminConsent').checked) return;
   const submit=e.submitter; submit.disabled=true;
   try {
     const {error} = await client.auth.signUp({email:byId('signupEmail').value.trim(),password:byId('signupPassword').value,
-      options:{emailRedirectTo:location.origin+location.pathname,data:{company:byId('signupCompany').value.trim(),notice_version:noticeVersion}}});
+      options:{emailRedirectTo:location.origin+location.pathname,data:{company:byId('signupCompany').value.trim(),notice_version:noticeVersion,service_consent:true,admin_consent:true}}});
     if(error) throw error;
     byId('signupPassword').value=''; message('가입을 요청했습니다. 이메일 인증 후 관리자 승인을 기다려 주세요.');
   } catch(error) { fail(error); } finally { submit.disabled=false; }
+};
+byId('noticeUpdateForm').onsubmit = async e => {
+ e.preventDefault(); if(!byId('updatedServiceConsent').checked || !byId('updatedAdminConsent').checked) return;
+ const submit=e.submitter;submit.disabled=true;
+ try {const {error}=await client.rpc('cq_accept_notice',{service_consent:true,admin_consent:true});if(error)throw error;location.reload();}
+ catch(error){fail(error);}finally{submit.disabled=false;}
 };
 byId('resetPassword').onclick = async () => {
   const email=byId('loginEmail').value.trim(); if(!email) return message('로그인 이메일을 먼저 입력하세요.');
@@ -99,12 +105,12 @@ byId('legacyBackup').onclick = exportLegacyBackup;
 byId('legacyBackupLoggedIn').onclick = exportLegacyBackup;
 async function renderAdmin() {
   const root=byId('adminAccounts'); root.replaceChildren();
-  const {data,error}=await client.from('cq_accounts').select('id,email,company,status,is_admin,notice_accepted_at').order('created_at',{ascending:false});
+  const {data,error}=await client.from('cq_accounts').select('id,email,company,status,is_admin,notice_version,notice_accepted_at').order('created_at',{ascending:false});
   if(error) throw error;
   for(const a of data) {
     const row=document.createElement('div'); row.className='card';
     const title=document.createElement('strong'); title.textContent=a.company;
-    const meta=document.createElement('p'); meta.textContent=`${a.email} · ${a.status} · 안내 확인 ${new Date(a.notice_accepted_at).toLocaleString('ko-KR')}`;
+    const meta=document.createElement('p'); meta.textContent=`${a.email} · ${{pending:"승인 대기",approved:"이용 중",suspended:"이용 정지"}[a.status]||a.status} · 안내 확인 ${new Date(a.notice_accepted_at).toLocaleString('ko-KR')}`;
     row.append(title,meta);
     if(!a.is_admin) for(const [label,next] of [['승인','approved'],['이용 정지','suspended']]) {
       row.append(button(label,async()=>{
@@ -156,6 +162,10 @@ async function start() {
   const profile=await client.from('cq_accounts').select('*').eq('id',user.id).single();
   if(profile.error) throw profile.error; account=profile.data;
   byId('accountBar').hidden=false; byId('accountName').textContent=account.company+' · '+account.email;
+  if(account.notice_version!==noticeVersion) {
+    byId('loginForm').hidden=true;byId('signupSection').hidden=true;byId('noticeUpdateForm').hidden=false;
+    message('이용 안내가 변경되었습니다. 확인 후 동의하면 계속 이용할 수 있습니다.');return;
+  }
   if(account.status!=='approved') {message(account.status==='pending'?'가입 승인 대기 중입니다. 관리자 승인 후 다시 로그인하세요.':'이용이 정지된 계정입니다. 운영자에게 문의하세요.');return;}
   const result=await client.from('cq_documents').select('payload,revision').eq('owner_id',user.id).single();
   if(result.error) throw result.error; payload=result.data.payload;revision=Number(result.data.revision);
