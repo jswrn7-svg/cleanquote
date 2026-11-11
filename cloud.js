@@ -171,7 +171,7 @@ async function renderAdmin() {
       const heading=document.createElement('h3'); heading.textContent=a.company+'의 저장된 견적서'; detail.append(heading);
       const list=data.cleanquote_offline_records_v1 || [];
       if(!list.length) detail.append(document.createTextNode('저장된 견적서가 없습니다.'));
-      const labels={client:'고객명',phone:'연락처',address:'주소',date:'견적일',recipient:'수신 이메일',service:'서비스',frequency:'주기',industry:'업종',scope:'작업 범위',price:'공급가액',priceUnit:'견적 기준',notes:'추가 안내'};
+      const labels={client:'고객명',phone:'연락처',address:'주소',date:'견적일',recipient:'수신 이메일',service:'서비스',frequency:'주기',industry:'업종',serviceDescription:'서비스 설명',scope:'작업 범위',price:'공급가액',priceUnit:'견적 기준',notes:'추가 안내'};
       for(const r of list) {
         const d=document.createElement('details'), summary=document.createElement('summary'); summary.textContent=(r.data?.client||'이름 없음')+' · '+(r.data?.date||''); d.append(summary);
         const dl=document.createElement('dl'); for(const [key,label] of Object.entries(labels)) {
@@ -198,6 +198,7 @@ byId('memberPdfDialog').addEventListener('close',()=>{
  byId('memberPdfFrame').removeAttribute('src');byId('memberPdfDownload').removeAttribute('href');
  if(memberPdfUrl)URL.revokeObjectURL(memberPdfUrl);memberPdfUrl=null;
 });
+byId('toggleAdmin').onclick=()=>{const body=byId('adminBody');body.hidden=!body.hidden;byId('toggleAdmin').setAttribute('aria-expanded',String(!body.hidden));byId('toggleAdmin').textContent=body.hidden?'업체 관리 펼치기':'업체 관리 접기';};
 byId('refreshAdmin').onclick = () => renderAdmin().catch(fail);
 byId('loadAudit').onclick = async () => {
   const {data,error}=await client.rpc('cq_admin_audit'); if(error) return fail(error);
@@ -231,7 +232,7 @@ async function start() {
   if(account.status!=='approved') {message(account.status==='pending'?'가입 승인 대기 중입니다. 관리자 승인 후 다시 로그인하세요.':'이용이 정지된 계정입니다. 운영자에게 문의하세요.');return;}
   const result=await client.from('cq_documents').select('payload,revision').eq('owner_id',user.id).single();
   if(result.error) throw result.error; payload=result.data.payload;revision=Number(result.data.revision);
-  const script=document.createElement('script');script.src='app.js?v=15-members';
+  const script=document.createElement('script');script.src='app.js?v=16-catalog';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('견적 기능을 불러오지 못했습니다.'));document.body.append(script);});
   byId('accountGate').hidden=true;document.querySelector('main').hidden=false;
   byId('cloudControls').hidden=false;status('서버 데이터를 불러왔습니다.');
