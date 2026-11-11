@@ -69,7 +69,7 @@ byId('loginForm').onsubmit = async e => {
   } catch(error) { fail(error); } finally { submit.disabled=false; }
 };
 byId('signupForm').onsubmit = async e => {
-  e.preventDefault(); if(!byId('signupServiceConsent').checked || !byId('signupAdminConsent').checked) return;
+  e.preventDefault(); if(!byId('signupConsent').checked) return;
   const submit=e.submitter; submit.disabled=true;
   try {
     const {error} = await client.auth.signUp({email:byId('signupEmail').value.trim(),password:byId('signupPassword').value,
@@ -79,7 +79,7 @@ byId('signupForm').onsubmit = async e => {
   } catch(error) { fail(error); } finally { submit.disabled=false; }
 };
 byId('noticeUpdateForm').onsubmit = async e => {
- e.preventDefault(); if(!byId('updatedServiceConsent').checked || !byId('updatedAdminConsent').checked) return;
+ e.preventDefault(); if(!byId('updatedConsent').checked) return;
  const submit=e.submitter;submit.disabled=true;
  try {const {error}=await client.rpc('cq_accept_notice',{service_consent:true,admin_consent:true});if(error)throw error;location.reload();}
  catch(error){fail(error);}finally{submit.disabled=false;}
