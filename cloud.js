@@ -114,13 +114,14 @@ byId('loginForm').onsubmit = async e => {
 };
 byId('signupForm').onsubmit = async e => {
   e.preventDefault(); if(!byId('signupConsent').checked) return;
-  const submit=e.submitter; submit.disabled=true;
+  const submit=e.submitter; submit.disabled=true;submit.textContent='가입 요청 중…';
+  const feedback=byId('signupFeedback');feedback.textContent='가입 정보를 확인하고 있습니다.';feedback.dataset.kind='info';
   try {
-    const {error} = await client.auth.signUp({email:byId('signupEmail').value.trim(),password:byId('signupPassword').value,
-      options:{emailRedirectTo:location.origin+location.pathname,data:{company:byId('signupCompany').value.trim(),notice_version:noticeVersion,service_consent:true,admin_consent:true}}});
-    if(error) throw error;
-    byId('signupPassword').value=''; message('가입을 요청했습니다. 이메일 인증 후 관리자 승인을 기다려 주세요.');
-  } catch(error) { fail(error); } finally { submit.disabled=false; }
+    const response=await fetch(config.url+'/functions/v1/register-company',{method:'POST',headers:{'Content-Type':'application/json',apikey:config.publicKey},body:JSON.stringify({email:byId('signupEmail').value.trim().toLowerCase(),password:byId('signupPassword').value,company:byId('signupCompany').value.trim(),notice_version:noticeVersion,service_consent:true,admin_consent:true})});
+    const result=await response.json();if(!response.ok||!result.ok)throw Error(result.error||'가입을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    byId('signupPassword').value='';feedback.dataset.kind='success';feedback.textContent='가입이 완료되었습니다. 이메일 인증은 필요하지 않습니다. 관리자 승인 후 로그인해 주세요.';
+  } catch(error) { feedback.dataset.kind='error';feedback.textContent=/fetch|network/i.test(error.message)?'가입 서버에 연결하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.':error.message; }
+  finally {submit.disabled=false;submit.textContent='동의하고 가입 승인 요청';feedback.scrollIntoView({block:'nearest',behavior:'smooth'});}
 };
 byId('noticeUpdateForm').onsubmit = async e => {
  e.preventDefault(); if(!byId('updatedConsent').checked) return;
@@ -164,7 +165,7 @@ async function renderAdmin() {
         if(error) throw error; await renderAdmin();
       }));
     }
-    row.append(button('견적서 조회',async()=>{
+    row.append(button('회원 견적서 보기',async()=>{
       const {data,error}=await client.rpc('cq_admin_document',{target_id:a.id}); if(error) throw error;
       const detail=byId('adminDetail'); detail.replaceChildren();
       const heading=document.createElement('h3'); heading.textContent=a.company+'의 저장된 견적서'; detail.append(heading);
@@ -175,7 +176,14 @@ async function renderAdmin() {
         const d=document.createElement('details'), summary=document.createElement('summary'); summary.textContent=(r.data?.client||'이름 없음')+' · '+(r.data?.date||''); d.append(summary);
         const dl=document.createElement('dl'); for(const [key,label] of Object.entries(labels)) {
           const dt=document.createElement('dt'),dd=document.createElement('dd'); dt.textContent=label; dd.textContent=String(r.data?.[key]??''); dl.append(dt,dd);
-        } d.append(dl);detail.append(d);
+        } d.append(dl,button('견적서 PDF 보기',async()=>{
+          const file=await window.createMemberQuotePdf(r.data,{company:a.company,...(data.cleanquote_offline_settings_v1||{})});
+          if(memberPdfUrl)URL.revokeObjectURL(memberPdfUrl);memberPdfUrl=URL.createObjectURL(file);
+          byId('memberPdfTitle').textContent=a.company+' · '+(r.data?.client||'견적서');
+          byId('memberPdfFrame').src=memberPdfUrl;
+          byId('memberPdfDownload').href=memberPdfUrl;byId('memberPdfDownload').download=file.name;
+          byId('memberPdfDialog').showModal();
+        }));detail.append(d);
       }
       const common=data.cleanquote_offline_settings_v1?.standardNotice;
       if(common) {const p=document.createElement('p');p.textContent='업체 공통 안내: '+common;detail.append(p);}
@@ -184,6 +192,12 @@ async function renderAdmin() {
     root.append(row);
   }
 }
+let memberPdfUrl=null;
+byId('closeMemberPdf').onclick=()=>byId('memberPdfDialog').close();
+byId('memberPdfDialog').addEventListener('close',()=>{
+ byId('memberPdfFrame').removeAttribute('src');byId('memberPdfDownload').removeAttribute('href');
+ if(memberPdfUrl)URL.revokeObjectURL(memberPdfUrl);memberPdfUrl=null;
+});
 byId('refreshAdmin').onclick = () => renderAdmin().catch(fail);
 byId('loadAudit').onclick = async () => {
   const {data,error}=await client.rpc('cq_admin_audit'); if(error) return fail(error);
@@ -217,7 +231,7 @@ async function start() {
   if(account.status!=='approved') {message(account.status==='pending'?'가입 승인 대기 중입니다. 관리자 승인 후 다시 로그인하세요.':'이용이 정지된 계정입니다. 운영자에게 문의하세요.');return;}
   const result=await client.from('cq_documents').select('payload,revision').eq('owner_id',user.id).single();
   if(result.error) throw result.error; payload=result.data.payload;revision=Number(result.data.revision);
-  const script=document.createElement('script');script.src='app.js?v=10-sauna';
+  const script=document.createElement('script');script.src='app.js?v=15-members';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('견적 기능을 불러오지 못했습니다.'));document.body.append(script);});
   byId('accountGate').hidden=true;document.querySelector('main').hidden=false;
   byId('cloudControls').hidden=false;status('서버 데이터를 불러왔습니다.');
