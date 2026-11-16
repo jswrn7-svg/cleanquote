@@ -36,7 +36,13 @@ async function flush() {
       : '서버에 저장하지 못했습니다. 현재 데이터를 백업하고 연결·승인 상태를 확인하세요.');
   } finally { running = false; }
 }
+const proposalBucket='cq-proposals';
+function proposalPath(){if(!account||account.status!=='approved')throw Error('승인된 계정으로 로그인하세요.');return account.id+'/proposal.pdf';}
 window.Cloud = {
+  async proposalInfo(){const path=proposalPath();const {data,error}=await client.storage.from(proposalBucket).list(account.id,{limit:10,search:'proposal.pdf'});if(error)throw error;return data.find(f=>f.name==='proposal.pdf')||null;},
+  async uploadProposal(file){const path=proposalPath();if(file.size>10485760)throw Error('제안서는 10MB 이하 PDF를 선택하세요.');const header=await file.slice(0,5).text();if(header!=='%PDF-')throw Error('올바른 PDF 파일을 선택하세요.');const {error}=await client.storage.from(proposalBucket).upload(path,file,{upsert:true,contentType:'application/pdf',cacheControl:'0'});if(error)throw error;},
+  async downloadProposal(){const {data,error}=await client.storage.from(proposalBucket).download(proposalPath());if(error)throw error;return data;},
+  async deleteProposal(){const {error}=await client.storage.from(proposalBucket).remove([proposalPath()]);if(error)throw error;},
   load(key, fallback) {
     if(payload[key]===undefined && key==='cleanquote_offline_settings_v1' && account) return {...clone(fallback),company:account.company};
     return clone(payload[key] ?? fallback);
@@ -77,6 +83,7 @@ byId('withdrawForm').onsubmit = async e => {
     const authResult=await client.auth.signInWithPassword({email:account.email,password:byId('withdrawPassword').value});
     byId('withdrawPassword').value='';if(authResult.error)throw Error('비밀번호를 확인해 주세요.');
     byId('withdrawMessage').textContent='계정과 저장 데이터를 삭제하고 있습니다…';
+    await window.Cloud.deleteProposal();
     const {error}=await client.rpc('cq_withdraw',{confirmation:'회원탈퇴'});if(error)throw error;
     generation=saved;formChanged=false;payload={};
     await client.auth.signOut({scope:'local'}).catch(()=>{});
@@ -231,7 +238,7 @@ async function start() {
   if(account.status!=='approved') {message(account.status==='pending'?'가입 승인 대기 중입니다. 관리자 승인 후 다시 로그인하세요.':'이용이 정지된 계정입니다. 운영자에게 문의하세요.');return;}
   const result=await client.from('cq_documents').select('payload,revision').eq('owner_id',user.id).single();
   if(result.error) throw result.error; payload=result.data.payload;revision=Number(result.data.revision);
-  const script=document.createElement('script');script.src='app.js?v=21-item-pricing';
+  const script=document.createElement('script');script.src='app.js?v=22-proposal';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('견적 기능을 불러오지 못했습니다.'));document.body.append(script);});
   byId('accountGate').hidden=true;document.querySelector('main').hidden=false;
   byId('cloudControls').hidden=false;status('서버 데이터를 불러왔습니다.');
